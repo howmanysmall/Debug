@@ -1,0 +1,24 @@
+[package]
+name = "howmanysmall/debug"
+description = "A bunch of debug-related functions."
+license = "MIT"
+version = "1.0.1"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+exclude = [
+	".gitignore",
+	".luaurc",
+	".vscode",
+	"build",
+	"docs",
+	"moonwave.toml",
+	"rokit.toml",
+	"selene.toml",
+	"sourcemap.json",
+	"stylua.toml",
+	"Debug.code-workspace",
+	"testez-companion.toml",
+	"testez.yml",
+]
+
+[dependencies]

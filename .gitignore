@@ -1,41 +1,13 @@
-# Compiled Lua sources
-luac.out
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+**/*.rbx[lm]*
+dist/
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+Packages/
+DevPackages/
+build
+**/sourcemap.json
+roblox.yml
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
+*.code-workspace

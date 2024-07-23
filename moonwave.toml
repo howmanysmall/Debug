@@ -1,0 +1,31 @@
+classOrder = ["Debug"]
+gitSourceBranch = "main"
+
+[docusaurus]
+tagline = "Various utilities for debugging"
+
+[[navbar.items]]
+href = "https://discord.gg/nhDpg96Srt"
+label = "Discord"
+position = "right"
+
+[[navbar.items]]
+href = "https://twitter.com/howmanysmaII"
+label = "Twitter"
+position = "right"
+
+[home]
+enabled = true
+includeReadme = false
+
+[[home.features]]
+title = "Better GetFullName"
+description = "Instance.GetFullName is not very good. This library has a version that fixes it!"
+
+[[home.features]]
+title = "Table Stringification"
+description = "If you ever want to pretty print a table, you can with this library."
+
+# [[home.features]]
+# title = "Made with Luau in mind"
+# description = "Janitor has been redesigned for the new Luau VM for maximum performance. Janitor as a result runs extremely well given the featureset."
