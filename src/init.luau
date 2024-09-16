@@ -2,8 +2,8 @@
 --!nonstrict
 
 --[=[
-	A standard library for debugging. Contains better `error`/`warn` functions,
-	an implementation of `TableToString`, and a few more.
+	A standard library for debugging. Contains better `error` / `warn`
+	functions, an implementation of `TableToString`, and a few more.
 
 	@class Debug
 ]=]
@@ -28,14 +28,35 @@ end
 local CachedServices = setmetatable({}, ServicesMetatable)
 local Debug_Inspect: (...unknown) -> string
 
+-- Bad practice? Maybe.
+local repeatCache = {}
+local function StringRep(value: string, amount: number): string
+	local stringCache = repeatCache[value]
+	if not stringCache then
+		stringCache = {}
+		repeatCache[value] = stringCache
+	end
+
+	local repeatString = stringCache[amount]
+	if not repeatString then
+		repeatString = string.rep(value, amount)
+		stringCache[amount] = repeatString
+	end
+
+	return repeatString
+end
+
 --@native
 --[=[
 	A fixed version of [Instance.GetFullName].
 
+	@function DirectoryToString
+	@within Debug
+
 	@param object Instance
 	@return string
 ]=]
-function Debug.DirectoryToString(object: Instance): string
+local function Debug_DirectoryToString(object: Instance): string
 	local fullName = {}
 	local count = 0
 
@@ -60,6 +81,7 @@ function Debug.DirectoryToString(object: Instance): string
 
 	return table.concat(fullName, "", count, 0)
 end
+Debug.DirectoryToString = Debug_DirectoryToString
 
 local REPLACERS = {
 	["Index ?"] = "__index";
@@ -171,10 +193,32 @@ function Debug.Warn(...)
 	warn((GetErrorData(...)))
 end
 
-function Debug.Error(...)
+--[=[
+	A standardized erroring system. Prefixing ErrorMessage with '!' makes it
+	expect the `[error origin script].Name` as first parameter in `{...}`. Past
+	the initial Error string, subsequent arguments get unpacked in a
+	`string.format` of the error string. Assert falls back on Error. Error
+	blames the latest item on the traceback as the cause of the error. Error
+	makes it clear which Library and function are being misused.
+
+	@function Error
+	@within Debug
+
+	@param ErrorMessage string -- The error message.
+	@param ... ...unknown -- The arguments to pass to string.format.
+]=]
+local function Debug_Error(...): never
 	error(GetErrorData(...))
 end
+Debug.Error = Debug_Error
 
+--[=[
+	Basically returns `condition or Debug.Error(...)`.
+
+	@param condition Condition -- The condition to check.
+	@param ... ...unknown -- The arguments to pass to string.format.
+	@return Condition
+]=]
 function Debug.Assert(condition, ...)
 	return condition or error(GetErrorData(...))
 end
@@ -199,7 +243,24 @@ local function Alphabetically(a: unknown, b: unknown)
 end
 
 --@native
-function Debug.AlphabeticalOrder<K, V>(dictionary: {[K]: V}): () -> (K, V)
+--[=[
+	Iteration function that iterates over a dictionary in alphabetical order.
+	Dictionary is that which will be iterated over in alphabetical order. Not
+	case-sensitive.
+
+	@function AlphabeticalOrder
+	@within Debug
+
+	```lua
+	for key, value in Debug.AlphabeticalOrder({Apple = true, Noodles = 5, Soup = false}) do
+		print(key, value)
+	end
+	```
+
+	@param dictionary {[K]: V} -- The dictionary you want to iterate over.
+	@return () -> (K, V) -- The iterator function.
+]=]
+local function Debug_AlphabeticalOrder<K, V>(dictionary: {[K]: V}): () -> (K, V)
 	local order = {}
 	local length = 0
 
@@ -219,13 +280,15 @@ function Debug.AlphabeticalOrder<K, V>(dictionary: {[K]: V}): () -> (K, V)
 		return key, iteratedTable[key], index
 	end, dictionary, nil
 end
+Debug.AlphabeticalOrder = Debug_AlphabeticalOrder
 
 --[=[
 	Unions iterator functions in the order they are passed in, without
-	duplicates from overlap.
+	duplicates from overlap. Don't know why you'd ever use this function, but
+	if you somehow find a use case, go for it.
 
 	```lua
-	for i, v in Debug.UnionIteratorFunctions(ipairs, pairs){1,2,3,4, a = 1, b = 2} do
+	for i, v in Debug.UnionIteratorFunctions(ipairs, pairs)({1,2,3,4, a = 1, b = 2}) do
 		print(i, v)
 	end
 	```
@@ -248,7 +311,7 @@ function Debug.UnionIteratorFunctions(...)
 		local keysSeen = {}
 
 		for index, iteratorFunction in iteratorFunctions do
-			local callback, tableToIterateThrough, next = iteratorFunction(iterateTable)
+			local callback, tableToIterateThrough, nextEntry = iteratorFunction(iterateTable)
 
 			if type(callback) ~= "function" or type(tableToIterateThrough) ~= "table" then
 				error(
@@ -260,14 +323,14 @@ function Debug.UnionIteratorFunctions(...)
 			end
 
 			while true do
-				local data = {callback(tableToIterateThrough, next)}
-				next = data[1]
-				if next == nil then
+				local data = {callback(tableToIterateThrough, nextEntry)}
+				nextEntry = data[1]
+				if nextEntry == nil then
 					break
 				end
 
-				if not keysSeen[next] then
-					keysSeen[next] = true
+				if not keysSeen[nextEntry] then
+					keysSeen[nextEntry] = true
 					count += 1
 					table.insert(data, index)
 					order[count] = data
@@ -283,6 +346,7 @@ function Debug.UnionIteratorFunctions(...)
 					if data then
 						return table.unpack(data)
 					end
+
 					return nil
 				end
 			end
@@ -303,18 +367,14 @@ local ConvertTableIntoString: (
 local function Parse(object: any, multiline: boolean?, depth: number, encounteredTables: {[any]: any})
 	local typeOf = typeof(object)
 
-	return typeOf == "table"
-			and (encounteredTables[object] and "[table " .. encounteredTables[object] .. "]" or ConvertTableIntoString(
-				object,
-				nil,
-				multiline,
-				depth + 1,
-				encounteredTables
-			))
-		or typeOf == "string" and "\"" .. object .. "\""
-		or typeOf == "Instance" and "<" .. Debug.DirectoryToString(object) .. ">"
-		or (typeOf == "function" or typeOf == "userdata") and typeOf
-		or tostring(object)
+	return if typeOf == "table"
+		then (if encounteredTables[object]
+			then "[table " .. encounteredTables[object] .. "]"
+			else ConvertTableIntoString(object, nil, multiline, depth + 1, encounteredTables))
+		elseif typeOf == "string" then "\"" .. object .. "\""
+		elseif typeOf == "Instance" then "<" .. Debug_DirectoryToString(object) .. ">"
+		elseif typeOf == "function" or typeOf == "userdata" then typeOf
+		else tostring(object)
 end
 
 function ConvertTableIntoString(object, tableName, multiline, depth, encounteredTables)
@@ -339,7 +399,7 @@ function ConvertTableIntoString(object, tableName, multiline, depth, encountered
 		return table.concat(array)
 	end
 
-	for key, value in Debug.AlphabeticalOrder(object) do
+	for key, value in Debug_AlphabeticalOrder(object) do
 		if not multiline and type(key) == "number" then
 			if key == currentArrayIndex then
 				currentArrayIndex += 1
@@ -359,7 +419,7 @@ function ConvertTableIntoString(object, tableName, multiline, depth, encountered
 				array[length] = "\n"
 
 				length += 1
-				array[length] = string.rep(TAB, depth)
+				array[length] = StringRep(TAB, depth)
 			end
 
 			if type(key) == "string" and string.find(key, "^[%a_][%w_]*$") then
@@ -383,7 +443,7 @@ function ConvertTableIntoString(object, tableName, multiline, depth, encountered
 			array[length] = Parse(value, multiline, depth, encounteredTables)
 
 			length += 1
-			array[length] = multiline and ";" or ", "
+			array[length] = if multiline then ";" else ", "
 		end
 	end
 
@@ -392,7 +452,7 @@ function ConvertTableIntoString(object, tableName, multiline, depth, encountered
 		array[length] = "\n"
 
 		length += 1
-		array[length] = string.rep(TAB, depth - 1)
+		array[length] = StringRep(TAB, depth - 1)
 	else
 		array[length] = nil
 		length -= 1
@@ -423,15 +483,19 @@ end
 
 	Returns a string-readable version of `object`.
 
+	@function TableToString
+	@within Debug
+
 	@param object {[any]: any} -- The table to convert into a string.
 	@param multiline? boolean -- If the table should be multiline.
 	@param tableName? string -- The name of the table.
 
 	@return string
 ]=]
-function Debug.TableToString(object: {[any]: any}, multiline: boolean?, tableName: string?): string
+local function Debug_TableToString(object: {[any]: any}, multiline: boolean?, tableName: string?): string
 	return ConvertTableIntoString(object, tableName, multiline, 1, {n = 0})
 end
+Debug.TableToString = Debug_TableToString
 
 local ESCAPED_CHARACTERS = {"%", "^", "$", "(", ")", ".", "[", "]", "*", "+", "-", "?"}
 local ESCAPABLE = "([%" .. table.concat(ESCAPED_CHARACTERS, "%") .. "])"
@@ -473,13 +537,13 @@ function Debug_Inspect(...: any): string
 
 		if dataType == "Instance" then
 			dataType = data.ClassName
-			dataString = Debug.DirectoryToString(data)
+			dataString = Debug_DirectoryToString(data)
 		elseif dataType == "EnumItem" then
 			dataType = tostring(data.EnumType)
 			dataString = tostring(data)
 		else
 			dataString = if dataType == "table"
-				then Debug.TableToString(data)
+				then Debug_TableToString(data)
 				elseif dataType == "string" then "\"" .. data .. "\""
 				else tostring(data)
 		end
