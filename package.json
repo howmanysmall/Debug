@@ -1,0 +1,31 @@
+{
+	"name": "@rbxts/rbx-debug",
+	"version": "1.0.2-ts.0",
+	"main": "src/init.lua",
+	"types": "src/index.d.ts",
+	"repository": "https://github.com/howmanysmall/Debug.git",
+	"author": "Validark",
+	"contributors": ["HowManySmall"],
+	"license": "MIT",
+	"scripts": {},
+	"files": ["src", "!**/*.tsbuildinfo"],
+	"publishConfig": {
+		"access": "public"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.1",
+		"@rbxts/compiler-types": "3.0.0-types.0",
+		"@rbxts/types": "^1.0.806",
+		"@typescript-eslint/eslint-plugin": "^7.18.0",
+		"@typescript-eslint/parser": "^7.18.0",
+		"eslint-config-prettier": "^9.1.0",
+		"eslint-plugin-perfectionist": "^2.11.0",
+		"eslint-plugin-prettier": "^5.2.1",
+		"eslint-plugin-roblox-ts": "^0.0.36",
+		"eslint-plugin-unicorn": "^55.0.0",
+		"eslint": "^8.57.0",
+		"prettier": "^3.3.3",
+		"roblox-ts": "^3.0.0",
+		"typescript": "^5.6.2"
+	}
+}
